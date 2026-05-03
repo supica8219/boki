@@ -4,7 +4,7 @@ body {
   background: #eee;
   display: flex;
   justify-content: center;
-  background-image: url("classroom.png");
+  background-image: url("images/classroom.png");
   background-size: cover;
   background-position: center;
 }

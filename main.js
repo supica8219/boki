@@ -25,7 +25,7 @@ function comment(){
 function character(){
   return `
     <div class="character">
-      <img src="chara.png" />
+      <img src="images/chara.png" />
     </div>
   `
 }
