@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>簿記クイズ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="phone" id="app"></div>
+
+
+<script>
+var js_questions = document.createElement("script");
+js_questions.src = "questions.js?" + Math.random();
+
+js_questions.onload = () => {
+    var js_main = document.createElement("script");
+    js_main.src = "main.js?" + Math.random();
+    document.body.appendChild(js_main);
+};
+
+document.body.appendChild(js_questions);
+</script>
+</body>
+</html>

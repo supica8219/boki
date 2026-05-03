@@ -1,0 +1,202 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #eee;
+  display: flex;
+  justify-content: center;
+  background-image: url("classroom.png");
+  background-size: cover;
+  background-position: center;
+}
+input,textarea,select{
+  font-size:16px;
+}
+.phone {
+  width: 360px;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 上部問題文 */
+.question-box {
+  background: rgba(255,255,255,0.9);
+  padding: 6px;
+  margin: 10px;
+  border-radius: 10px;
+  font-size: 16px; /* ←5pxは小さすぎるので調整 */
+}
+.comment {
+  position:relative;
+  display:inline-block;
+  margin-left:20px;
+  width:40%;
+  background: rgba(255,255,255,0.9);
+  padding: 6px;
+  border-radius: 10px;
+  font-size: 12px; /* ←5pxは小さすぎるので調整 */
+}
+.comment:before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  margin-top: -15px;
+  border: 15px solid transparent;
+  border-left: 15px solid rgba(255,255,255,0.9);
+}
+/* キャラ */
+.character {
+  display:inline-block;
+  text-align: center;
+}
+
+.character img {
+  width: 120px;
+}
+
+/* メインカード */
+.card {
+  background: white;
+  margin: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.step {
+  width:30%;
+  text-align: center;
+  font-size: 12px;
+  color: #fff;
+  background: #a78bfa;
+  padding: 2px 5px;
+  border-radius: 10px;
+  margin:0 auto;
+}
+
+.title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  margin: 10px 0;
+  position: relative;
+}
+
+.title::after {
+  content: "";
+  width: 80px;
+  height: 6px;
+  background: #facc15;
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 3px;
+}
+
+/* 数値ボックス */
+.info-box {
+  background: #e0ecff;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* 選択肢 */
+.choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.choice {
+  padding: 14px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.choice:nth-child(1){ background:#cfe3ff;}
+.choice:nth-child(2){ background:#f7c9d6;}
+.choice:nth-child(3){ background:#fde68a;}
+.choice:nth-child(4){ background:#bbf7d0;}
+
+.footer {
+  text-align: center;
+  font-size: 12px;
+  margin-top: 10px;
+  color: #666;
+}
+/* テーブル */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.table th {
+  background: #e5e7eb;
+}
+
+.table input {
+  width: 80px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* キーパッド */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.key {
+  background: #e5e7eb;
+  padding: 10px;
+  text-align: center;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.table select{
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+
+  font-size: 16px;
+  text-align: center;
+
+  border: none;
+  outline: none;
+  background: transparent;
+
+  appearance: none;       /* ←デフォルトUI消す（重要） */
+  -webkit-appearance: none;
+}
+/* ボタン */
+.submit {
+  width: 90%;
+  background: linear-gradient(90deg,#a78bfa,#c084fc);
+  color: white;
+  padding: 14px;
+  border-radius: 20px;
+  text-align: center;
+  font-weight: bold;
+  margin:0 auto;
+  margin-top: 10px;
+
+}
