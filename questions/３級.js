@@ -1,4 +1,4 @@
-const questions = [
+window.questionsData = [
   // 一問目
   {
     type: "choice",
