@@ -4,6 +4,7 @@
 
 var questions = []
 let index = 0
+let currentQuizFile = ''  // 現在のクイズセットファイル名
 
 // ==============================
 // 初期：問題セット選択
@@ -38,6 +39,7 @@ function loadQuestions(name) {
   const old = document.getElementById("q-script")
   if (old) old.remove()
 
+  currentQuizFile = name  // クイズファイルを保存
   const script = document.createElement("script")
   script.id = "q-script"
   script.src = `questions/${name}.js?` + Math.random()
@@ -52,6 +54,11 @@ function loadQuestions(name) {
 
 function showQuestionStartSelection() {
   const app = document.getElementById("app")
+  const progress = getProgress(currentQuizFile)
+  const key = getFavoritesKey(currentQuizFile)
+  const favoritesStr = localStorage.getItem(key)
+  const favorites = favoritesStr ? JSON.parse(favoritesStr) : []
+  
   const questionItems = questions.map((q, i) => {
     let prefix
     if (i < 10) {
@@ -59,16 +66,27 @@ function showQuestionStartSelection() {
     } else {
       prefix = `[${i + 1}]`
     }
+    
+    // progressより小さいインデックスの問題は解いた扱い（灰色）
+    const isSolved = i < progress
+    const className = isSolved ? 'choice solved' : 'choice'
+    const style = isSolved ? ' style="background-color: #d1d5db; opacity: 0.6;"' : ''
+    
+    // お気に入り表示
+    const starMark = favorites.includes(i) ? ' ★' : ''
+    
     return `
-    <div class="choice" onclick="startFromQuestion(${i})">
-      ${prefix} ${q.question}
+    <div class="${className}"${style} onclick="startFromQuestion(${i})">
+      ${prefix} ${q.question}${starMark}
     </div>
   `
   }).join("")
 
+  const progressText = progress > 0 ? `（攻略済み: 第1問〜第${progress}問）` : ''
+
   app.innerHTML = `
     <div class="card">
-      <div class="title">この問題セットの開始問題を選択</div>
+      <div class="title">この問題セットの開始問題を選択${progressText}</div>
       <div class="choices">
         ${questionItems}
       </div>
@@ -96,10 +114,57 @@ function accountInfo(acc) {
   }
 }
 
+// ==============================
+// 進捗管理
+// ==============================
+
+function getProgress(quizFile) {
+  const progress = localStorage.getItem(`quiz_progress_${quizFile}`)
+  return progress ? parseInt(progress, 10) : 0
+}
+
+function updateProgress(quizFile, solvedCount) {
+  const currentProgress = getProgress(quizFile)
+  // より大きい方を保存（降りてきた場合はそのまま、昇ってきた場合は更新）
+  const newProgress = Math.max(currentProgress, solvedCount)
+  localStorage.setItem(`quiz_progress_${quizFile}`, newProgress)
+}
+
 function normalizeSide(side) {
   if (side === "debit" || side === "借方") return "debit"
   if (side === "credit" || side === "貸方") return "credit"
   return side
+}
+
+// ==============================
+// お気に入り管理
+// ==============================
+
+function getFavoritesKey(quizFile) {
+  return `quiz_favorites_${quizFile}`
+}
+
+function isFavorite(quizFile, questionIndex) {
+  const favoritesStr = localStorage.getItem(getFavoritesKey(quizFile))
+  if (!favoritesStr) return false
+  const favorites = JSON.parse(favoritesStr)
+  return favorites.includes(questionIndex)
+}
+
+function toggleFavorite(quizFile, questionIndex) {
+  const key = getFavoritesKey(quizFile)
+  const favoritesStr = localStorage.getItem(key)
+  let favorites = favoritesStr ? JSON.parse(favoritesStr) : []
+  
+  const index = favorites.indexOf(questionIndex)
+  if (index > -1) {
+    favorites.splice(index, 1)
+  } else {
+    favorites.push(questionIndex)
+  }
+  
+  localStorage.setItem(key, JSON.stringify(favorites))
+  render()  // 再描画して星印の状態を更新
 }
 
 // ==============================
@@ -123,7 +188,16 @@ function step() {
 }
 
 function title(text) {
-  return `<div class="title">${text}</div>`
+  const isFav = isFavorite(currentQuizFile, index)
+  const starIcon = isFav ? '★' : '☆'
+  return `
+    <div class="title-container">
+      <div class="title">${text}</div>
+      <div class="favorite-btn" onclick="toggleFavorite(currentQuizFile, ${index})" title="お気に入り">
+        <span class="star-icon">${starIcon}</span>
+      </div>
+    </div>
+  `
 }
 
 function infoBox(desc) {
@@ -140,7 +214,7 @@ function footer() {
 
   if (q.hint && q.hint.length > 0) {
     const hintLinks = q.hint.map(keyword => `<span class="hint-keyword" onclick="explainKeyword('${keyword}')">${keyword}</span>`).join('、')
-    html += `<div class="hint">ヒント: ${hintLinks}</div>`
+    html += `<div class="hint"><span class="hint-label" onclick="askFreeQuestion()">ヒント:</span> ${hintLinks}</div>`
   }
 
   return `<div class="footer">${html}</div>`
@@ -259,6 +333,8 @@ function answer(i) {
 
   if (i === q.answer) {
     alert("正解")
+    // 進捗を更新（現在のインデックス + 1）
+    updateProgress(currentQuizFile, index + 1)
     next()
   } else {
     alert("不正解")
@@ -314,6 +390,8 @@ function checkInput() {
 
   if (isCorrect) {
     alert("正解")
+    // 進捗を更新（現在のインデックス + 1）
+    updateProgress(currentQuizFile, index + 1)
     next()
   } else {
     alert("不正解")
@@ -534,6 +612,214 @@ async function askFollowup(keyword) {
   submitBtn.disabled = false
   submitBtn.textContent = "質問する"
   document.getElementById("followup-question-input").value = ""
+}
+
+// ==============================
+// 自由入力でAIに質問
+// ==============================
+
+async function askFreeQuestion() {
+  const modal = document.createElement("div")
+  modal.className = "ai-modal"
+  modal.innerHTML = `
+    <div class="ai-modal-content">
+      <div class="ai-modal-header">
+        <h3>AIに質問する</h3>
+        <span class="ai-modal-close">&times;</span>
+      </div>
+      <div id="free-question-section">
+        <textarea id="free-question-input" placeholder="この問題について、わからないことや質問があれば入力してください..." rows="3"></textarea>
+        <button id="free-question-submit-btn" onclick="submitFreeQuestion()">質問する</button>
+      </div>
+      <div id="free-response" class="ai-response" style="display: none;"></div>
+      <div id="free-followup-section" style="display: none;">
+        <textarea id="free-followup-question-input" placeholder="追加の質問を入力してください..." rows="2"></textarea>
+        <button id="free-followup-submit-btn" onclick="submitFreeFollowup()">質問する</button>
+      </div>
+      <div class="ai-modal-resize-handle"></div>
+    </div>
+  `
+
+  modal.onclick = (e) => {
+    if (e.target === modal || e.target.className === "ai-modal-close") {
+      modal.remove()
+    }
+  }
+
+  document.body.appendChild(modal)
+
+  const content = modal.querySelector('.ai-modal-content')
+  const header = modal.querySelector('.ai-modal-header')
+  const resizeHandle = modal.querySelector('.ai-modal-resize-handle')
+
+  // ドラッグ処理
+  header.addEventListener('mousedown', (event) => {
+    event.preventDefault()
+
+    const rect = content.getBoundingClientRect()
+    const shiftX = event.clientX - rect.left
+    const shiftY = event.clientY - rect.top
+
+    content.style.left = rect.left + 'px'
+    content.style.top = rect.top + 'px'
+    content.style.transform = 'none'
+
+    function onMouseMove(e) {
+      content.style.left = e.clientX - shiftX + 'px'
+      content.style.top = e.clientY - shiftY + 'px'
+    }
+
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  })
+
+  // リサイズ処理
+  resizeHandle.addEventListener('mousedown', (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const rect = content.getBoundingClientRect()
+    const startX = event.clientX
+    const startY = event.clientY
+    const startWidth = rect.width
+    const startHeight = rect.height
+
+    function onMouseMove(e) {
+      const deltaX = e.clientX - startX
+      const deltaY = e.clientY - startY
+      const newWidth = Math.max(300, startWidth + deltaX)
+      const newHeight = Math.max(200, startHeight + deltaY)
+      content.style.width = newWidth + 'px'
+      content.style.height = newHeight + 'px'
+    }
+
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  })
+}
+
+async function submitFreeQuestion() {
+  const questionText = document.getElementById("free-question-input").value.trim()
+  if (!questionText) return
+
+  const submitBtn = document.getElementById("free-question-submit-btn")
+  const responseDiv = document.getElementById("free-response")
+  const questionSection = document.getElementById("free-question-section")
+
+  submitBtn.disabled = true
+  submitBtn.textContent = "考え中..."
+
+  const currentQuestion = questions[index]
+  const problemContext = getQuestionContext(currentQuestion)
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたは簿記や会計の専門家です。簿記22級レベルの問題を解く上で役立つように、わかりやすく簡潔に回答してください。'
+          },
+          {
+            role: 'user',
+            content: `以下の問題に関して、ユーザーの質問に答えてください。\n\n${problemContext}\n\nユーザーの質問: ${questionText}`
+          }
+        ],
+        max_tokens: 500
+      })
+    })
+
+    const data = await response.json()
+
+    if (data.choices && data.choices[0]) {
+      questionSection.style.display = "none"
+      responseDiv.style.display = "block"
+      responseDiv.innerHTML = `<strong>質問:</strong> ${questionText}<br><strong>回答:</strong><br>${data.choices[0].message.content}`
+      document.getElementById("free-followup-section").style.display = "block"
+    } else {
+      responseDiv.style.display = "block"
+      responseDiv.innerHTML = "申し訳ありません、回答を取得できませんでした。"
+    }
+  } catch (error) {
+    responseDiv.style.display = "block"
+    responseDiv.innerHTML = "エラーが発生しました。もう一度お試しください。"
+    console.error('AI API Error:', error)
+  }
+
+  submitBtn.disabled = false
+  submitBtn.textContent = "質問する"
+}
+
+async function submitFreeFollowup() {
+  const followupText = document.getElementById("free-followup-question-input").value.trim()
+  if (!followupText) return
+
+  const submitBtn = document.getElementById("free-followup-submit-btn")
+  const responseDiv = document.getElementById("free-response")
+
+  submitBtn.disabled = true
+  submitBtn.textContent = "考え中..."
+
+  const currentContent = responseDiv.innerHTML
+  responseDiv.innerHTML += "<br><br><strong>追加質問:</strong> " + followupText + "<br><em>回答を取得中...</em>"
+
+  const currentQuestion = questions[index]
+  const problemContext = getQuestionContext(currentQuestion)
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたは簿記や会計の専門家です。簿記22級レベルの問題を解く上で役立つように、わかりやすく簡潔に回答してください。'
+          },
+          {
+            role: 'user',
+            content: `以下の問題に関して、ユーザーの追加質問に答えてください。\n\n${problemContext}\n\nユーザーの追加質問: ${followupText}`
+          }
+        ],
+        max_tokens: 500
+      })
+    })
+
+    const data = await response.json()
+
+    if (data.choices && data.choices[0]) {
+      responseDiv.innerHTML = currentContent + "<br><br><strong>追加質問:</strong> " + followupText + "<br><strong>回答:</strong><br>" + data.choices[0].message.content
+    } else {
+      responseDiv.innerHTML = currentContent + "<br><br><strong>追加質問:</strong> " + followupText + "<br><em>申し訳ありません、回答を取得できませんでした。</em>"
+    }
+  } catch (error) {
+    responseDiv.innerHTML = currentContent + "<br><br><strong>追加質問:</strong> " + followupText + "<br><em>エラーが発生しました。もう一度お試しください。</em>"
+    console.error('AI API Error:', error)
+  }
+
+  submitBtn.disabled = false
+  submitBtn.textContent = "質問する"
+  document.getElementById("free-followup-question-input").value = ""
 }
 
 // ==============================
